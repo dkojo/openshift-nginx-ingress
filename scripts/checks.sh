@@ -62,12 +62,12 @@ case "$1" in
   surface)
     kubectl create namespace outsider --dry-run=client -o yaml | kubectl apply -f - >/dev/null
     out=$(probe outsider -sk --max-time 5 -o /dev/null -w '%{http_code}' https://catalog.shop.svc:8443/)
-    echo "From another namespace -> ${out:-no answer}"
+    if [[ $out == 000* || -z $out ]]; then echo "From another namespace -> no answer (blocked by the network policy)"; else echo "From another namespace -> HTTP $out"; fi
     if [[ $out == *200* || $out == *400* ]]; then echo "FAIL  a pod outside the gate reached the service"; exit 1; fi
     echo "Services in shop:"; kubectl get svc -n shop -o custom-columns=NAME:.metadata.name,TYPE:.spec.type --no-headers | sed 's/^/  /'
     exposed=$(kubectl get svc -A -o jsonpath='{range .items[?(@.spec.type!="ClusterIP")]}{.metadata.namespace}/{.metadata.name} {.spec.type}{"\n"}{end}')
     if [ -n "$exposed" ]; then echo "FAIL  exposed outside the gate:"; echo "$exposed"; exit 1; fi
-    echo "Published to the outside: $(docker port gate-control-plane | paste -sd' ' -)"
+    echo "Published to the outside: $(docker port gate-control-plane | grep -v '127.0.0.1' | paste -sd' ' -) (the Kubernetes API is bound to localhost only)"
     echo "PASS  only the gate (80 -> redirect, 443) is reachable; every service is ClusterIP behind a default-deny policy"
     ;;
 esac
