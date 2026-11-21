@@ -1,0 +1,14 @@
+# NGINX Ingress Controller (F5 NGINX, open source): the only thing with ports open to the outside.
+controller:
+  nodeSelector: { ingress-ready: "true" }
+  tolerations:
+    - { key: node-role.kubernetes.io/control-plane, operator: Exists, effect: NoSchedule }
+  hostPort: { enable: true, http: 80, https: 443 }
+  service: { type: ClusterIP }
+  enableCustomResources: true
+  config:
+    entries:
+      ssl-protocols: "TLSv1.2 TLSv1.3"
+      server-tokens: "False"
+      hsts: "True"
+      hsts-max-age: "31536000"

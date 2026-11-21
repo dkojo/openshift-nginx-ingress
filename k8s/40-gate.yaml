@@ -1,0 +1,43 @@
+# The gate: one VirtualServer for shop.local. TLS ends here with the cert-manager certificate, HTTP is redirected,
+# and each route re-encrypts to its service with the ingress's client certificate (EgressMTLS), checking the
+# service's certificate on the way.
+apiVersion: k8s.nginx.org/v1
+kind: Policy
+metadata: { name: mtls-to-catalog, namespace: shop }
+spec:
+  egressMTLS:
+    tlsSecret: ingress-client
+    trustedCertSecret: internal-ca-trust
+    verifyServer: true
+    sslName: catalog.shop.svc
+    protocols: TLSv1.2 TLSv1.3
+---
+apiVersion: k8s.nginx.org/v1
+kind: Policy
+metadata: { name: mtls-to-orders, namespace: shop }
+spec:
+  egressMTLS:
+    tlsSecret: ingress-client
+    trustedCertSecret: internal-ca-trust
+    verifyServer: true
+    sslName: orders.shop.svc
+    protocols: TLSv1.2 TLSv1.3
+---
+apiVersion: k8s.nginx.org/v1
+kind: VirtualServer
+metadata: { name: shop, namespace: shop }
+spec:
+  host: shop.local
+  tls:
+    secret: shop-tls
+    redirect: { enable: true, code: 301 }
+  upstreams:
+    - { name: catalog, service: catalog, port: 8443, tls: { enable: true } }
+    - { name: orders, service: orders, port: 8443, tls: { enable: true } }
+  routes:
+    - path: /catalog
+      policies: [{ name: mtls-to-catalog }]
+      action: { pass: catalog }
+    - path: /orders
+      policies: [{ name: mtls-to-orders }]
+      action: { pass: orders }

@@ -1,0 +1,15 @@
+# On OpenShift, the same pattern with a Route instead of the VirtualServer: TLS at the router,
+# then re-encrypted to the service, which is verified against the internal CA.
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata: { name: catalog, namespace: shop }
+spec:
+  host: shop.apps.example.com
+  path: /catalog
+  to: { kind: Service, name: catalog }
+  port: { targetPort: https }
+  tls:
+    termination: reencrypt
+    insecureEdgeTerminationPolicy: Redirect
+    destinationCACertificate: |
+      # paste the internal CA certificate (ca.crt) here

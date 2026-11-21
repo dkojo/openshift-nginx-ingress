@@ -1,0 +1,45 @@
+# Every hop gets its own certificate, all issued (and renewed) by cert-manager from the internal CA:
+#   shop-tls        what clients see at the gate (shop.local)
+#   catalog-tls     what the catalog service presents to the ingress
+#   orders-tls      what the orders service presents to the ingress
+#   ingress-client  the ingress's own identity, which it presents to the services (mutual TLS)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata: { name: shop-tls, namespace: shop }
+spec:
+  secretName: shop-tls
+  dnsNames: [shop.local]
+  duration: 2160h
+  renewBefore: 720h
+  privateKey: { algorithm: ECDSA, size: 256 }
+  issuerRef: { name: internal-ca, kind: ClusterIssuer }
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata: { name: catalog-tls, namespace: shop }
+spec:
+  secretName: catalog-tls
+  dnsNames: [catalog.shop.svc, catalog.shop.svc.cluster.local]
+  usages: [server auth]
+  privateKey: { algorithm: ECDSA, size: 256 }
+  issuerRef: { name: internal-ca, kind: ClusterIssuer }
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata: { name: orders-tls, namespace: shop }
+spec:
+  secretName: orders-tls
+  dnsNames: [orders.shop.svc, orders.shop.svc.cluster.local]
+  usages: [server auth]
+  privateKey: { algorithm: ECDSA, size: 256 }
+  issuerRef: { name: internal-ca, kind: ClusterIssuer }
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata: { name: ingress-client, namespace: shop }
+spec:
+  secretName: ingress-client
+  commonName: nginx-ingress
+  usages: [client auth]
+  privateKey: { algorithm: ECDSA, size: 256 }
+  issuerRef: { name: internal-ca, kind: ClusterIssuer }
