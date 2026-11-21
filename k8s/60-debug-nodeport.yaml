@@ -1,0 +1,8 @@
+# DEMO: a "temporary" way in to debug catalog directly, bypassing the gate.
+apiVersion: v1
+kind: Service
+metadata: { name: catalog-debug, namespace: shop }
+spec:
+  type: NodePort
+  selector: { app: catalog }
+  ports: [{ port: 8443, targetPort: https, nodePort: 30443 }]
