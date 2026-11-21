@@ -33,15 +33,19 @@ case "$1" in
     for path in catalog orders; do
       body=$($CURL --cacert ca.crt "$GATE/$path")
       echo "GET $GATE/$path -> $body"
-      echo "$body" | grep -q '"caller":"CN=nginx-ingress"'
+      grep -q '"caller":"CN=nginx-ingress"' <<< "$body"
     done
     code=$($CURL -o /dev/null -w '%{http_code} -> %{redirect_url}' http://shop.local:8080/catalog)
     echo "Plain HTTP: $code"; [[ $code == 301* ]]
-    $CURL --cacert ca.crt -I "$GATE/catalog" | grep -i '^strict-transport-security' | tr -d '\r'
-    proto=$(echo | openssl s_client -connect 127.0.0.1:8443 -servername shop.local -CAfile ca.crt -verify_return_error 2>/dev/null | grep -m1 'Protocol' | awk '{print $NF}')
+    # Outputs are captured before grepping: grep -m1 on a live pipe can break it, and pipefail would fail the step
+    headers=$($CURL --cacert ca.crt -I "$GATE/catalog")
+    grep -i '^strict-transport-security' <<< "$headers" | tr -d '\r'
+    hs=$(echo | openssl s_client -connect 127.0.0.1:8443 -servername shop.local -CAfile ca.crt -verify_return_error 2>/dev/null || true)
+    proto=$(grep -m1 'Protocol' <<< "$hs" | awk '{print $NF}')
     echo "Negotiated protocol: $proto (certificate chain verified)"
     pod=$(kubectl get pod -n nginx-ingress -o name | head -1)
-    kubectl exec -n nginx-ingress "$pod" -- nginx -T 2>/dev/null | grep -m1 -E '^\s*ssl_protocols' | sed 's/^ */Gate allows: /'
+    conf=$(kubectl exec -n nginx-ingress "$pod" -- nginx -T 2>/dev/null || true)
+    grep -m1 -E '^\s*ssl_protocols' <<< "$conf" | sed 's/^ */Gate allows: /'
     echo "PASS  HTTPS only, through one gate, verified certificate, HSTS, TLS 1.2+"
     ;;
   e2e)
