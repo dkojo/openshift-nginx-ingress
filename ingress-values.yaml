@@ -10,5 +10,3 @@ controller:
     entries:
       ssl-protocols: "TLSv1.2 TLSv1.3"
       server-tokens: "False"
-      hsts: "True"
-      hsts-max-age: "31536000"

@@ -37,7 +37,17 @@ spec:
   routes:
     - path: /catalog
       policies: [{ name: mtls-to-catalog }]
-      action: { pass: catalog }
+      action:
+        proxy:
+          upstream: catalog
+          responseHeaders:
+            add:
+              - { name: Strict-Transport-Security, value: "max-age=31536000" }   # browsers must stay on HTTPS
     - path: /orders
       policies: [{ name: mtls-to-orders }]
-      action: { pass: orders }
+      action:
+        proxy:
+          upstream: orders
+          responseHeaders:
+            add:
+              - { name: Strict-Transport-Security, value: "max-age=31536000" }   # browsers must stay on HTTPS
